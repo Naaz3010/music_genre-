@@ -191,7 +191,7 @@ if page == "Dashboard":
 # PREDICTION PAGE
 # -------------------------------------------------
     
-    elif page == "Genre Prediction":
+elif page == "Genre Prediction":
 
     st.subheader("Upload Audio File")
 
