@@ -58,75 +58,77 @@ def extract_features(y, sr):
 
     features = []
 
+    def safe_mean(x):
+        return float(np.mean(x))
+
+    def safe_var(x):
+        return float(np.var(x))
+
     # -------------------------
     # Chroma STFT
     # -------------------------
     chroma = librosa.feature.chroma_stft(y=y, sr=sr)
-    features.append(np.mean(chroma))
-    features.append(np.var(chroma))
+    features.append(safe_mean(chroma))
+    features.append(safe_var(chroma))
 
     # -------------------------
-    # RMS Energy
+    # RMS
     # -------------------------
     rms = librosa.feature.rms(y=y)
-    features.append(np.mean(rms))
-    features.append(np.var(rms))
+    features.append(safe_mean(rms))
+    features.append(safe_var(rms))
 
     # -------------------------
-    # Spectral Centroid
+    # Spectral features
     # -------------------------
     cent = librosa.feature.spectral_centroid(y=y, sr=sr)
-    features.append(np.mean(cent))
-    features.append(np.var(cent))
+    features.append(safe_mean(cent))
+    features.append(safe_var(cent))
 
-    # -------------------------
-    # Spectral Bandwidth
-    # -------------------------
     bw = librosa.feature.spectral_bandwidth(y=y, sr=sr)
-    features.append(np.mean(bw))
-    features.append(np.var(bw))
+    features.append(safe_mean(bw))
+    features.append(safe_var(bw))
 
-    # -------------------------
-    # Rolloff
-    # -------------------------
     rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr)
-    features.append(np.mean(rolloff))
-    features.append(np.var(rolloff))
+    features.append(safe_mean(rolloff))
+    features.append(safe_var(rolloff))
 
-    # -------------------------
-    # Zero Crossing Rate
-    # -------------------------
     zcr = librosa.feature.zero_crossing_rate(y)
-    features.append(np.mean(zcr))
-    features.append(np.var(zcr))
+    features.append(safe_mean(zcr))
+    features.append(safe_var(zcr))
 
     # -------------------------
-    # Harmony & Perceptual
+    # Harmonic / Percussive (FIXED)
     # -------------------------
     harmony = librosa.effects.harmonic(y)
-    features.append(np.mean(harmony))
-    features.append(np.var(harmony))
+    features.append(float(np.mean(harmony)))
+    features.append(float(np.var(harmony)))
 
-    perceptr = librosa.effects.percussive(y)
-    features.append(np.mean(perceptr))
-    features.append(np.var(perceptr))
+    percussive = librosa.effects.percussive(y)
+    features.append(float(np.mean(percussive)))
+    features.append(float(np.var(percussive)))
 
     # -------------------------
     # Tempo
     # -------------------------
     tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-    features.append(tempo)
+    features.append(float(tempo))
 
     # -------------------------
-    # MFCC (20 features → mean + var each)
+    # MFCC (CRITICAL FIX)
     # -------------------------
     mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20)
 
     for i in range(20):
-        features.append(np.mean(mfcc[i]))
-        features.append(np.var(mfcc[i]))
+        features.append(float(np.mean(mfcc[i])))
+        features.append(float(np.var(mfcc[i])))
 
-    return np.array(features).reshape(1, -1)
+    # FINAL SAFETY CHECK
+    features = np.array(features, dtype=np.float32)
+
+    return features.reshape(1, -1)
+
+
 
 # -------------------------------------------------
 # HEADER
@@ -149,6 +151,7 @@ col1.metric("Genres Supported", "10")
 col2.metric("Dataset", "GTZAN")
 col3.metric("Model", "Random Forest (200 trees)")
 col4.metric("Pipeline", "Librosa + ML")
+
 
 st.divider()
 
@@ -181,6 +184,12 @@ if page == "Dashboard":
 # PREDICTION PAGE
 # -------------------------------------------------
 
+Pipeline([
+    ('features', FeatureExtractor()),
+    ('scaler', StandardScaler()),
+    ('model', RandomForestClassifier())
+])
+
 elif page == "Genre Prediction":
 
     st.subheader("Upload Audio File")
@@ -204,13 +213,13 @@ elif page == "Genre Prediction":
 
                     features = extract_features(y, sr)
 
-                    prediction = model.predict(features)[0]
+                    prediction = (features)[0]
 
                     st.success(f"Predicted Genre: {prediction}")
 
                     # Probability plot
                     if hasattr(model, "predict_proba"):
-                        probs = model.predict_proba(features)[0]
+                        probs = _proba(features)[0]
 
                         prob_df = pd.DataFrame({
                             "Genre": model.classes_,
