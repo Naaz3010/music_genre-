@@ -125,10 +125,10 @@ if page == "Dashboard":
     fig = px.bar(df, x="Genre", y="Tracks", title="GTZAN Dataset Distribution")
     st.plotly_chart(fig, use_container_width=True)
 
-st.write("Feature shape:", features.shape)
-st.write("Any NaN:", np.isnan(features).any())
-st.write("Any Inf:", np.isinf(features).any())
-st.write("Model expects:", model.n_features_in_)
+    st.write("Feature shape:", features.shape)
+    st.write("Any NaN:", np.isnan(features).any())
+    st.write("Any Inf:", np.isinf(features).any())
+    st.write("Model expects:", model.n_features_in_)
 
 # -------------------------------------------------
 # PREDICTION
