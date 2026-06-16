@@ -87,6 +87,8 @@ def extract_features(y, sr):
         features.append(to_scalar(mfcc[i]))
         features.append(to_var(mfcc[i]))
 
+    features = np.append(features, 0.0)  # TEMP FIX for missing feature
+
     return np.array(features, dtype=np.float32).reshape(1, -1)
 
 # -------------------------------------------------
