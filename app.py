@@ -5,6 +5,7 @@ import joblib
 import librosa
 import plotly.express as px
 import plotly.graph_objects as go
+from sklearn.pipeline import Pipeline
 
 # -------------------------------------------------
 # PAGE CONFIG
