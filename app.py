@@ -171,32 +171,39 @@ elif page == "Genre Prediction":
 
     st.subheader("Upload Audio File")
 
-    uploaded_file = st.file_uploader("Upload .wav Audio", type=["wav"])
+    uploaded_file = st.file_uploader("Upload .wav file", type=["wav"])
 
     if uploaded_file:
 
         st.audio(uploaded_file)
 
         if model is None:
-            st.error("Model not loaded. Fix rf_model.pkl path.")
+            st.error("Model not loaded properly.")
         else:
 
             if st.button("Predict Genre"):
 
                 try:
-                    st.info("Extracting audio features...")
+                    st.info("Extracting features...")
+
+                    uploaded_file.seek(0)
 
                     y, sr = librosa.load(uploaded_file, sr=None)
 
                     features = extract_features(y, sr)
 
-                    prediction = (features)[0]
+                    # DEBUG (important)
+                    st.write("Feature shape:", features.shape)
+                    st.write("Model expects:", model.n_features_in_)
 
+                    # PREDICTION
+                    prediction = model.predict(features)[0]
                     st.success(f"Predicted Genre: {prediction}")
 
-                    # Probability plot
+                    # PROBABILITY
                     if hasattr(model, "predict_proba"):
-                        probs = _proba(features)[0]
+
+                        probs = model.predict_proba(features)[0]
 
                         prob_df = pd.DataFrame({
                             "Genre": model.classes_,
@@ -214,6 +221,7 @@ elif page == "Genre Prediction":
 
                 except Exception as e:
                     st.error(f"Prediction failed: {e}")
+
 
 # -------------------------------------------------
 # MODEL PERFORMANCE
