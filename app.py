@@ -17,6 +17,25 @@ st.set_page_config(
 )
 
 # -------------------------------------------------
+# CUSTOM CSS
+# -------------------------------------------------
+
+st.markdown("""
+<style>
+.main { padding: 1rem; }
+
+.metric-card {
+    background-color: #0E1117;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+h1,h2,h3 { color: #1DB954; }
+</style>
+""", unsafe_allow_html=True)
+
+# -------------------------------------------------
 # LOAD MODEL
 # -------------------------------------------------
 
