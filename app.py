@@ -5,7 +5,7 @@ import joblib
 import librosa
 import plotly.express as px
 import plotly.graph_objects as go
-
+import sklearn from import pipeline 
 # -------------------------------------------------
 # PAGE CONFIG
 # -------------------------------------------------
@@ -17,13 +17,33 @@ st.set_page_config(
 )
 
 # -------------------------------------------------
-# LOAD MODEL
+# CUSTOM CSS
+# -------------------------------------------------
+
+st.markdown("""
+<style>
+.main { padding: 1rem; }
+
+.metric-card {
+    background-color: #0E1117;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+h1,h2,h3 { color: #1DB954; }
+</style>
+""", unsafe_allow_html=True)
+
+# -------------------------------------------------
+# LOAD MODEL (SAFE)
 # -------------------------------------------------
 
 @st.cache_resource
 def load_model():
     try:
-        return joblib.load("rf_model.pkl")
+        model = joblib.load("rf_model.pkl")
+        return model
     except Exception as e:
         st.error(f"Model loading failed: {e}")
         return None
@@ -31,62 +51,84 @@ def load_model():
 model = load_model()
 
 # -------------------------------------------------
-# FEATURE EXTRACTION (MATCH TRAINING)
+# FEATURE EXTRACTION (FIXED & STABLE)
 # -------------------------------------------------
-st.write("Model expects:", model.n_features_in_)
-st.write("You produced:", features.shape[1])
-
 
 def extract_features(y, sr):
 
-    def scalar(x):
-        return float(np.mean(np.ravel(x)))
-
-    def scalar_var(x):
-        return float(np.var(np.ravel(x)))
-
     features = []
 
-    # Chroma
+    def safe_mean(x):
+        return float(np.mean(x))
+
+    def safe_var(x):
+        return float(np.var(x))
+
+    # -------------------------
+    # Chroma STFT
+    # -------------------------
     chroma = librosa.feature.chroma_stft(y=y, sr=sr)
-    features += [scalar(chroma), scalar_var(chroma)]
+    features.append(safe_mean(chroma))
+    features.append(safe_var(chroma))
 
+    # -------------------------
     # RMS
+    # -------------------------
     rms = librosa.feature.rms(y=y)
-    features += [scalar(rms), scalar_var(rms)]
+    features.append(safe_mean(rms))
+    features.append(safe_var(rms))
 
+    # -------------------------
     # Spectral features
+    # -------------------------
     cent = librosa.feature.spectral_centroid(y=y, sr=sr)
-    features += [scalar(cent), scalar_var(cent)]
+    features.append(safe_mean(cent))
+    features.append(safe_var(cent))
 
     bw = librosa.feature.spectral_bandwidth(y=y, sr=sr)
-    features += [scalar(bw), scalar_var(bw)]
+    features.append(safe_mean(bw))
+    features.append(safe_var(bw))
 
     rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr)
-    features += [scalar(rolloff), scalar_var(rolloff)]
+    features.append(safe_mean(rolloff))
+    features.append(safe_var(rolloff))
 
     zcr = librosa.feature.zero_crossing_rate(y)
-    features += [scalar(zcr), scalar_var(zcr)]
+    features.append(safe_mean(zcr))
+    features.append(safe_var(zcr))
 
-    # Harmony / Percussive (IMPORTANT FIX)
+    # -------------------------
+    # Harmonic / Percussive (FIXED)
+    # -------------------------
     harmony = librosa.effects.harmonic(y)
-    features += [scalar(harmony), scalar_var(harmony)]
+    features.append(float(np.mean(harmony)))
+    features.append(float(np.var(harmony)))
 
     percussive = librosa.effects.percussive(y)
-    features += [scalar(percussive), scalar_var(percussive)]
+    features.append(float(np.mean(percussive)))
+    features.append(float(np.var(percussive)))
 
-    # Tempo (force scalar safely)
+    # -------------------------
+    # Tempo
+    # -------------------------
     tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-    features.append(float(np.ravel(tempo)[0]))
+    features.append(float(tempo))
 
-    # MFCC
+    # -------------------------
+    # MFCC (CRITICAL FIX)
+    # -------------------------
     mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20)
 
     for i in range(20):
-        features.append(scalar(mfcc[i]))
-        features.append(scalar_var(mfcc[i]))
+        features.append(float(np.mean(mfcc[i])))
+        features.append(float(np.var(mfcc[i])))
 
-    return np.array(features, dtype=np.float32).reshape(1, -1)
+    # FINAL SAFETY CHECK
+    features = np.array(features, dtype=np.float32)
+
+    return features.reshape(1, -1)
+
+
 
 # -------------------------------------------------
 # HEADER
@@ -95,8 +137,30 @@ def extract_features(y, sr):
 st.title("🎵 AI Music Genre Classification Platform")
 
 st.markdown("""
-### ML-powered audio genre classification system using Random Forest.
+### Business Overview
+AI system that classifies music genres using ML + audio signal processing.
 """)
+
+# -------------------------------------------------
+# KPI SECTION
+# -------------------------------------------------
+
+col1, col2, col3, col4 = st.columns(4)
+
+col1.metric("Genres Supported", "10")
+col2.metric("Dataset", "GTZAN")
+col3.metric("Model", "Random Forest (200 trees)")
+col4.metric("Pipeline", "Librosa + ML")
+
+
+st.divider()
+
+Pipeline([
+    ('features', FeatureExtractor()),
+    ('scaler', StandardScaler()),
+    ('model', RandomForestClassifier())
+])
+
 
 # -------------------------------------------------
 # SIDEBAR
@@ -124,9 +188,9 @@ if page == "Dashboard":
     st.plotly_chart(fig, use_container_width=True)
 
 # -------------------------------------------------
-# PREDICTION
+# PREDICTION PAGE
 # -------------------------------------------------
-
+    
 elif page == "Genre Prediction":
 
     st.subheader("Upload Audio File")
@@ -138,30 +202,25 @@ elif page == "Genre Prediction":
         st.audio(uploaded_file)
 
         if model is None:
-            st.error("Model not loaded.")
+            st.error("Model not loaded. Fix rf_model.pkl path.")
         else:
 
             if st.button("Predict Genre"):
 
                 try:
-                    st.info("Extracting features...")
+                    st.info("Extracting audio features...")
 
                     y, sr = librosa.load(uploaded_file, sr=None)
 
                     features = extract_features(y, sr)
 
-                    # DEBUG (optional)
-                    st.write("Feature shape:", features.shape)
-                    st.write("Model expects:", model.n_features_in_)
+                    prediction = (features)[0]
 
-                    # PREDICTION (FIXED)
-                    prediction = model.predict(features)[0]
                     st.success(f"Predicted Genre: {prediction}")
 
-                    # PROBABILITY (FIXED)
+                    # Probability plot
                     if hasattr(model, "predict_proba"):
-
-                        probs = model.predict_proba(features)[0]
+                        probs = _proba(features)[0]
 
                         prob_df = pd.DataFrame({
                             "Genre": model.classes_,
@@ -211,9 +270,9 @@ elif page == "Business Impact":
 
     st.markdown("""
 - Automatic music classification
-- Recommendation systems
+- Better recommendation systems
 - Reduced manual tagging cost
-- Scalable AI integration
+- Scalable streaming integration
 """)
 
 # -------------------------------------------------
@@ -222,17 +281,21 @@ elif page == "Business Impact":
 
 elif page == "About Project":
 
-    st.subheader("Project Info")
+    st.subheader("Project Information")
 
     st.markdown("""
 ### Model
-RandomForestClassifier (200 trees)
+RandomForestClassifier (200 estimators)
+
+st.write(features.shape)
+st.write(model.n_features_in_)
 
 ### Tech Stack
-Python, Streamlit, Librosa, Scikit-learn
+Python, Streamlit, Librosa, Scikit-learn, Plotly
 
 ### Features
 - Audio feature extraction
 - Genre classification
-- Probability output
+- Probability prediction
 """)
+         give me fully updated code 
