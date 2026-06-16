@@ -114,19 +114,41 @@ def extract_features(y, sr):
 # HEADER
 # -------------------------------------------------
 
-st.title("🎵 AI Music Genre Classification System")
+st.title("🎵 AI Music Genre Classification Platform")
 
 st.markdown("""
-Upload a `.wav` audio file and get genre prediction using a trained Random Forest model.
+### Business Overview
+AI system that classifies music genres using ML + audio signal processing.
 """)
+
+# -------------------------------------------------
+# KPI SECTION
+# -------------------------------------------------
+
+col1, col2, col3, col4 = st.columns(4)
+
+col1.metric("Genres Supported", "10")
+col2.metric("Dataset", "GTZAN")
+col3.metric("Model", "Random Forest (200 trees)")
+col4.metric("Pipeline", "Librosa + ML")
+
+
+st.divider()
+
+Pipeline([
+    ('features', FeatureExtractor()),
+    ('scaler', StandardScaler()),
+    ('model', RandomForestClassifier())
+])
+
 
 # -------------------------------------------------
 # SIDEBAR
 # -------------------------------------------------
 
 page = st.sidebar.radio(
-    "Navigation",
-    ["Dashboard", "Genre Prediction", "Model Performance", "About Project"]
+    "Select Module",
+    ["Dashboard", "Genre Prediction", "Model Performance", "Business Impact", "About Project"]
 )
 
 # -------------------------------------------------
@@ -135,7 +157,7 @@ page = st.sidebar.radio(
 
 if page == "Dashboard":
 
-    st.subheader("Dataset Overview (GTZAN)")
+    st.subheader("Genre Distribution")
 
     genres = ["Rock","Pop","Jazz","Hip-Hop","Classical","Blues","Country","Disco","Metal","Reggae"]
     counts = [100]*10
@@ -148,44 +170,37 @@ if page == "Dashboard":
 # -------------------------------------------------
 # PREDICTION PAGE
 # -------------------------------------------------
-
+    
 elif page == "Genre Prediction":
 
     st.subheader("Upload Audio File")
 
-    uploaded_file = st.file_uploader("Upload .wav file", type=["wav"])
+    uploaded_file = st.file_uploader("Upload .wav Audio", type=["wav"])
 
     if uploaded_file:
 
         st.audio(uploaded_file)
 
         if model is None:
-            st.error("Model not loaded properly.")
+            st.error("Model not loaded. Fix rf_model.pkl path.")
         else:
 
             if st.button("Predict Genre"):
 
                 try:
-                    st.info("Extracting features...")
-
-                    uploaded_file.seek(0)
+                    st.info("Extracting audio features...")
 
                     y, sr = librosa.load(uploaded_file, sr=None)
 
                     features = extract_features(y, sr)
 
-                    # DEBUG (important)
-                    st.write("Feature shape:", features.shape)
-                    st.write("Model expects:", model.n_features_in_)
+                    prediction = (features)[0]
 
-                    # PREDICTION
-                    prediction = model.predict(features)[0]
                     st.success(f"Predicted Genre: {prediction}")
 
-                    # PROBABILITY
+                    # Probability plot
                     if hasattr(model, "predict_proba"):
-
-                        probs = model.predict_proba(features)[0]
+                        probs = _proba(features)[0]
 
                         prob_df = pd.DataFrame({
                             "Genre": model.classes_,
@@ -210,46 +225,57 @@ elif page == "Genre Prediction":
 
 elif page == "Model Performance":
 
-    st.subheader("Evaluation Metrics")
+    st.subheader("Model Evaluation")
 
     metrics = pd.DataFrame({
         "Metric": ["Accuracy","Precision","Recall","F1 Score"],
         "Value": [0.91, 0.90, 0.89, 0.90]
     })
 
+    st.dataframe(metrics, use_container_width=True)
+
     fig = go.Figure()
     fig.add_trace(go.Bar(x=metrics["Metric"], y=metrics["Value"]))
-    fig.update_layout(title="Model Performance")
+    fig.update_layout(title="Performance Metrics")
 
     st.plotly_chart(fig, use_container_width=True)
 
 # -------------------------------------------------
-# ABOUT
+# BUSINESS IMPACT
+# -------------------------------------------------
+
+elif page == "Business Impact":
+
+    st.subheader("Business Value")
+
+    st.markdown("""
+- Automatic music classification
+- Better recommendation systems
+- Reduced manual tagging cost
+- Scalable streaming integration
+""")
+
+# -------------------------------------------------
+# ABOUT PROJECT
 # -------------------------------------------------
 
 elif page == "About Project":
 
-    st.subheader("Project Details")
+    st.subheader("Project Information")
 
     st.markdown("""
 ### Model
-RandomForestClassifier (n_estimators=200)
+RandomForestClassifier (200 estimators)
 
-### Features Used
-- Chroma STFT
-- RMS
-- Spectral Centroid
-- Spectral Bandwidth
-- Rolloff
-- Zero Crossing Rate
-- Harmony & Percussive
-- Tempo
-- MFCC (20 mean + variance)
+st.write(features.shape)
+st.write(model.n_features_in_)
 
 ### Tech Stack
 Python, Streamlit, Librosa, Scikit-learn, Plotly
 
-### Output
-- Genre prediction
-- Probability distribution
+### Features
+- Audio feature extraction
+- Genre classification
+- Probability prediction
 """)
+        
