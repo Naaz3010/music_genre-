@@ -55,19 +55,78 @@ model = load_model()
 # -------------------------------------------------
 
 def extract_features(y, sr):
-    try:
-        zcr = np.mean(librosa.feature.zero_crossing_rate(y))
-        centroid = np.mean(librosa.feature.spectral_centroid(y=y, sr=sr))
-        rolloff = np.mean(librosa.feature.spectral_rolloff(y=y, sr=sr))
 
-        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20)
-        mfcc_mean = np.mean(mfcc.T, axis=0)
+    features = []
 
-        features = np.hstack([zcr, centroid, rolloff, mfcc_mean])
-        return features.reshape(1, -1)
+    # -------------------------
+    # Chroma STFT
+    # -------------------------
+    chroma = librosa.feature.chroma_stft(y=y, sr=sr)
+    features.append(np.mean(chroma))
+    features.append(np.var(chroma))
 
-    except Exception as e:
-        raise ValueError(f"Feature extraction failed: {e}")
+    # -------------------------
+    # RMS Energy
+    # -------------------------
+    rms = librosa.feature.rms(y=y)
+    features.append(np.mean(rms))
+    features.append(np.var(rms))
+
+    # -------------------------
+    # Spectral Centroid
+    # -------------------------
+    cent = librosa.feature.spectral_centroid(y=y, sr=sr)
+    features.append(np.mean(cent))
+    features.append(np.var(cent))
+
+    # -------------------------
+    # Spectral Bandwidth
+    # -------------------------
+    bw = librosa.feature.spectral_bandwidth(y=y, sr=sr)
+    features.append(np.mean(bw))
+    features.append(np.var(bw))
+
+    # -------------------------
+    # Rolloff
+    # -------------------------
+    rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr)
+    features.append(np.mean(rolloff))
+    features.append(np.var(rolloff))
+
+    # -------------------------
+    # Zero Crossing Rate
+    # -------------------------
+    zcr = librosa.feature.zero_crossing_rate(y)
+    features.append(np.mean(zcr))
+    features.append(np.var(zcr))
+
+    # -------------------------
+    # Harmony & Perceptual
+    # -------------------------
+    harmony = librosa.effects.harmonic(y)
+    features.append(np.mean(harmony))
+    features.append(np.var(harmony))
+
+    perceptr = librosa.effects.percussive(y)
+    features.append(np.mean(perceptr))
+    features.append(np.var(perceptr))
+
+    # -------------------------
+    # Tempo
+    # -------------------------
+    tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
+    features.append(tempo)
+
+    # -------------------------
+    # MFCC (20 features → mean + var each)
+    # -------------------------
+    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20)
+
+    for i in range(20):
+        features.append(np.mean(mfcc[i]))
+        features.append(np.var(mfcc[i]))
+
+    return np.array(features).reshape(1, -1)
 
 # -------------------------------------------------
 # HEADER
