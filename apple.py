@@ -63,9 +63,6 @@ def extract_features(y, sr):
 
     features = []
 
-    # LENGTH FEATURE
-    features.append(float(len(y)))
-
     # Chroma
     chroma = librosa.feature.chroma_stft(y=y, sr=sr)
     features += [to_scalar(chroma), to_var(chroma)]
