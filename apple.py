@@ -120,13 +120,6 @@ st.markdown("""
 Upload a `.wav` audio file and get genre prediction using a trained Random Forest model.
 """)
 
-st.write(type(model))
-st.write(model)
-st.write(model.classes_)
-st.write(model.n_features_in_)
-
-st.write("PRED:", prediction)
-st.write("PROB:", model.predict_proba(features))
 
 # -------------------------------------------------
 # SIDEBAR
