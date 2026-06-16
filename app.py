@@ -22,9 +22,7 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-.main {
-    padding: 1rem;
-}
+.main { padding: 1rem; }
 
 .metric-card {
     background-color: #0E1117;
@@ -33,24 +31,43 @@ st.markdown("""
     text-align: center;
 }
 
-h1,h2,h3 {
-    color: #1DB954;
-}
+h1,h2,h3 { color: #1DB954; }
 </style>
 """, unsafe_allow_html=True)
 
 # -------------------------------------------------
-# LOAD MODEL
+# LOAD MODEL (SAFE)
 # -------------------------------------------------
 
 @st.cache_resource
 def load_model():
-    return joblib.load("rf_model.pkl")
+    try:
+        model = joblib.load("rf_model.pkl")
+        return model
+    except Exception as e:
+        st.error(f"Model loading failed: {e}")
+        return None
 
-try:
-    model = load_model()
-except:
-    model = None
+model = load_model()
+
+# -------------------------------------------------
+# FEATURE EXTRACTION (FIXED & STABLE)
+# -------------------------------------------------
+
+def extract_features(y, sr):
+    try:
+        zcr = np.mean(librosa.feature.zero_crossing_rate(y))
+        centroid = np.mean(librosa.feature.spectral_centroid(y=y, sr=sr))
+        rolloff = np.mean(librosa.feature.spectral_rolloff(y=y, sr=sr))
+
+        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20)
+        mfcc_mean = np.mean(mfcc.T, axis=0)
+
+        features = np.hstack([zcr, centroid, rolloff, mfcc_mean])
+        return features.reshape(1, -1)
+
+    except Exception as e:
+        raise ValueError(f"Feature extraction failed: {e}")
 
 # -------------------------------------------------
 # HEADER
@@ -60,22 +77,7 @@ st.title("🎵 AI Music Genre Classification Platform")
 
 st.markdown("""
 ### Business Overview
-
-This AI-powered platform classifies music tracks into genres using Machine Learning.
-
-The solution demonstrates:
-
-- Machine Learning Model Development
-- Audio Signal Processing
-- Explainable AI
-- Business Dashboarding
-- End-to-End Deployment
-
-**Target Users**
-- Music Streaming Companies
-- Record Labels
-- Recommendation Systems
-- Audio Analytics Platforms
+AI system that classifies music genres using ML + audio signal processing.
 """)
 
 # -------------------------------------------------
@@ -84,17 +86,10 @@ The solution demonstrates:
 
 col1, col2, col3, col4 = st.columns(4)
 
-with col1:
-    st.metric("Genres Supported", "10")
-
-with col2:
-    st.metric("Dataset", "GTZAN")
-
-with col3:
-    st.metric("Model", "Random Forest")
-
-with col4:
-    st.metric("Accuracy", "90%+")
+col1.metric("Genres Supported", "10")
+col2.metric("Dataset", "GTZAN")
+col3.metric("Model", "Random Forest (200 trees)")
+col4.metric("Pipeline", "Librosa + ML")
 
 st.divider()
 
@@ -102,17 +97,9 @@ st.divider()
 # SIDEBAR
 # -------------------------------------------------
 
-st.sidebar.title("Navigation")
-
 page = st.sidebar.radio(
     "Select Module",
-    [
-        "Dashboard",
-        "Genre Prediction",
-        "Model Performance",
-        "Business Impact",
-        "About Project"
-    ]
+    ["Dashboard", "Genre Prediction", "Model Performance", "Business Impact", "About Project"]
 )
 
 # -------------------------------------------------
@@ -123,33 +110,12 @@ if page == "Dashboard":
 
     st.subheader("Genre Distribution")
 
-    genres = [
-        "Rock",
-        "Pop",
-        "Jazz",
-        "Hip-Hop",
-        "Classical",
-        "Blues",
-        "Country",
-        "Disco",
-        "Metal",
-        "Reggae"
-    ]
+    genres = ["Rock","Pop","Jazz","Hip-Hop","Classical","Blues","Country","Disco","Metal","Reggae"]
+    counts = [100]*10
 
-    counts = [100,100,100,100,100,100,100,100,100,100]
+    df = pd.DataFrame({"Genre": genres, "Tracks": counts})
 
-    df = pd.DataFrame({
-        "Genre": genres,
-        "Tracks": counts
-    })
-
-    fig = px.bar(
-        df,
-        x="Genre",
-        y="Tracks",
-        title="GTZAN Dataset Distribution"
-    )
-
+    fig = px.bar(df, x="Genre", y="Tracks", title="GTZAN Dataset Distribution")
     st.plotly_chart(fig, use_container_width=True)
 
 # -------------------------------------------------
@@ -160,60 +126,49 @@ elif page == "Genre Prediction":
 
     st.subheader("Upload Audio File")
 
-    uploaded_file = st.file_uploader(
-        "Upload .wav Audio",
-        type=["wav"]
-    )
+    uploaded_file = st.file_uploader("Upload .wav Audio", type=["wav"])
 
     if uploaded_file:
 
         st.audio(uploaded_file)
 
-        if st.button("Predict Genre"):
+        if model is None:
+            st.error("Model not loaded. Fix rf_model.pkl path.")
+        else:
 
-            st.info("Extracting audio features...")
+            if st.button("Predict Genre"):
 
-            try:
+                try:
+                    st.info("Extracting audio features...")
 
-                y, sr = librosa.load(uploaded_file)
+                    y, sr = librosa.load(uploaded_file, sr=None)
 
-                features = []
+                    features = extract_features(y, sr)
 
-                features.append(np.mean(librosa.feature.zero_crossing_rate(y)))
-                features.append(np.mean(librosa.feature.spectral_centroid(y=y, sr=sr)))
-                features.append(np.mean(librosa.feature.spectral_rolloff(y=y, sr=sr)))
+                    prediction = model.predict(features)[0]
 
-                mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20)
+                    st.success(f"Predicted Genre: {prediction}")
 
-                for value in np.mean(mfcc.T, axis=0):
-                    features.append(value)
+                    # Probability plot
+                    if hasattr(model, "predict_proba"):
+                        probs = model.predict_proba(features)[0]
 
-                features = np.array(features).reshape(1, -1)
+                        prob_df = pd.DataFrame({
+                            "Genre": model.classes_,
+                            "Probability": probs
+                        })
 
-                prediction = model.predict(features)[0]
+                        fig = px.bar(
+                            prob_df,
+                            x="Genre",
+                            y="Probability",
+                            title="Prediction Confidence"
+                        )
 
-                st.success(f"Predicted Genre: {prediction}")
+                        st.plotly_chart(fig, use_container_width=True)
 
-                if hasattr(model, "predict_proba"):
-
-                    probs = model.predict_proba(features)[0]
-
-                    prob_df = pd.DataFrame({
-                        "Genre": model.classes_,
-                        "Probability": probs
-                    })
-
-                    fig = px.bar(
-                        prob_df,
-                        x="Genre",
-                        y="Probability",
-                        title="Prediction Confidence"
-                    )
-
-                    st.plotly_chart(fig, use_container_width=True)
-
-            except Exception as e:
-                st.error(str(e))
+                except Exception as e:
+                    st.error(f"Prediction failed: {e}")
 
 # -------------------------------------------------
 # MODEL PERFORMANCE
@@ -224,32 +179,15 @@ elif page == "Model Performance":
     st.subheader("Model Evaluation")
 
     metrics = pd.DataFrame({
-        "Metric":[
-            "Accuracy",
-            "Precision",
-            "Recall",
-            "F1 Score"
-        ],
-        "Value":[
-            0.91,
-            0.90,
-            0.89,
-            0.90
-        ]
+        "Metric": ["Accuracy","Precision","Recall","F1 Score"],
+        "Value": [0.91, 0.90, 0.89, 0.90]
     })
 
     st.dataframe(metrics, use_container_width=True)
 
     fig = go.Figure()
-
-    fig.add_trace(go.Bar(
-        x=metrics["Metric"],
-        y=metrics["Value"]
-    ))
-
-    fig.update_layout(
-        title="Performance Metrics"
-    )
+    fig.add_trace(go.Bar(x=metrics["Metric"], y=metrics["Value"]))
+    fig.update_layout(title="Performance Metrics")
 
     st.plotly_chart(fig, use_container_width=True)
 
@@ -262,24 +200,10 @@ elif page == "Business Impact":
     st.subheader("Business Value")
 
     st.markdown("""
-### Why This Matters
-
-Music genre classification enables:
-
-#### Content Organization
-Automatically categorizes millions of tracks.
-
-#### Recommendation Systems
-Improves playlist generation and personalization.
-
-#### User Engagement
-Higher listening retention through relevant suggestions.
-
-#### Cost Reduction
-Reduces manual tagging effort.
-
-#### Scalable AI Infrastructure
-Supports future integration with streaming platforms.
+- Automatic music classification
+- Better recommendation systems
+- Reduced manual tagging cost
+- Scalable streaming integration
 """)
 
 # -------------------------------------------------
@@ -291,37 +215,15 @@ elif page == "About Project":
     st.subheader("Project Information")
 
     st.markdown("""
-### Project Name
-AI Music Genre Classification System
+### Model
+RandomForestClassifier (200 estimators)
 
-### Dataset
-GTZAN Music Genre Dataset
+### Tech Stack
+Python, Streamlit, Librosa, Scikit-learn, Plotly
 
-### Algorithms
-- Random Forest
-- K-Nearest Neighbors
-
-### Explainable AI
-- LIME
-
-### Technologies
-- Python
-- Streamlit
-- Scikit-Learn
-- Librosa
-- Pandas
-- NumPy
-- Plotly
-
-### Supported Genres
-- Rock
-- Pop
-- Jazz
-- Hip-Hop
-- Classical
-- Blues
-- Country
-- Disco
-- Metal
-- Reggae
+### Features
+- Audio feature extraction
+- Genre classification
+- Probability prediction
 """)
+    
