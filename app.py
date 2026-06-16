@@ -54,8 +54,9 @@ model = load_model()
 # FEATURE EXTRACTION (FIXED & STABLE)
 # -------------------------------------------------
 
+def extract_features(y, sr):
 
-y, sr = librosa.load(uploaded_file, sr=None)
+    y, sr = librosa.load(uploaded_file, sr=None)
 
 features = extract_features(y, sr)
 
