@@ -36,52 +36,52 @@ model = load_model()
 
 def extract_features(y, sr):
 
+    def scalar(x):
+        return float(np.mean(np.ravel(x)))
+
+    def scalar_var(x):
+        return float(np.var(np.ravel(x)))
+
     features = []
-
-    def safe(x):
-        return float(np.mean(x))
-
-    def safe_var(x):
-        return float(np.var(x))
 
     # Chroma
     chroma = librosa.feature.chroma_stft(y=y, sr=sr)
-    features += [safe(chroma), safe_var(chroma)]
+    features += [scalar(chroma), scalar_var(chroma)]
 
     # RMS
     rms = librosa.feature.rms(y=y)
-    features += [safe(rms), safe_var(rms)]
+    features += [scalar(rms), scalar_var(rms)]
 
-    # Spectral
+    # Spectral features
     cent = librosa.feature.spectral_centroid(y=y, sr=sr)
-    features += [safe(cent), safe_var(cent)]
+    features += [scalar(cent), scalar_var(cent)]
 
     bw = librosa.feature.spectral_bandwidth(y=y, sr=sr)
-    features += [safe(bw), safe_var(bw)]
+    features += [scalar(bw), scalar_var(bw)]
 
     rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr)
-    features += [safe(rolloff), safe_var(rolloff)]
+    features += [scalar(rolloff), scalar_var(rolloff)]
 
     zcr = librosa.feature.zero_crossing_rate(y)
-    features += [safe(zcr), safe_var(zcr)]
+    features += [scalar(zcr), scalar_var(zcr)]
 
-    # Harmonic / Percussive
+    # Harmony / Percussive (IMPORTANT FIX)
     harmony = librosa.effects.harmonic(y)
-    features += [float(np.mean(harmony)), float(np.var(harmony))]
+    features += [scalar(harmony), scalar_var(harmony)]
 
     percussive = librosa.effects.percussive(y)
-    features += [float(np.mean(percussive)), float(np.var(percussive))]
+    features += [scalar(percussive), scalar_var(percussive)]
 
-    # Tempo
+    # Tempo (force scalar safely)
     tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-    features.append(float(tempo))
+    features.append(float(np.ravel(tempo)[0]))
 
-    # MFCC (20 -> mean + var)
+    # MFCC
     mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20)
 
     for i in range(20):
-        features.append(float(np.mean(mfcc[i])))
-        features.append(float(np.var(mfcc[i])))
+        features.append(scalar(mfcc[i]))
+        features.append(scalar_var(mfcc[i]))
 
     return np.array(features, dtype=np.float32).reshape(1, -1)
 
