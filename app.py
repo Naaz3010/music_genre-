@@ -134,59 +134,35 @@ if page == "Dashboard":
 # PREDICTION
 # -------------------------------------------------
 
-elif page == "Genre Prediction":
+if st.button("Predict Genre"):
 
-    st.subheader("Upload Audio File")
+    try:
+        st.info("Extracting features...")
 
-    uploaded_file = st.file_uploader("Upload .wav file", type=["wav"])
+        y, sr = librosa.load(uploaded_file, sr=None)
 
-    if uploaded_file:
+        features = extract_features(y, sr)
 
-        st.audio(uploaded_file)
+        # ✅ DEBUG (MUST BE INSIDE BUTTON)
+        st.write("Feature shape:", features.shape)
+        st.write("Model expects:", model.n_features_in_)
 
-        if model is None:
-            st.error("Model not loaded")
-        else:
+        prediction = model.predict(features)[0]
+        st.success(f"Predicted Genre: {prediction}")
 
-            if st.button("Predict Genre"):
+        if hasattr(model, "predict_proba"):
+            probs = model.predict_proba(features)[0]
 
-                try:
-                    st.info("Extracting features...")
+            prob_df = pd.DataFrame({
+                "Genre": model.classes_,
+                "Probability": probs
+            })
 
-                    uploaded_file.seek(0)
+            st.bar_chart(prob_df.set_index("Genre"))
 
-                    y, sr = librosa.load(uploaded_file, sr=None)
+    except Exception as e:
+        st.error(f"Prediction failed: {e}")
 
-                    features = extract_features(y, sr)
-
-                    st.write("Feature shape:", features.shape)
-                    st.write("Model expects:", model.n_features_in_)
-
-                    # ---------------- PREDICTION ----------------
-                    prediction = model.predict(features)[0]
-                    st.success(f"Predicted Genre: {prediction}")
-
-                    # ---------------- PROBABILITY ----------------
-                    if hasattr(model, "predict_proba"):
-
-                        probs = model.predict_proba(features)[0]
-
-                        prob_df = pd.DataFrame({
-                            "Genre": model.classes_,
-                            "Probability": probs
-                        })
-
-                        fig = px.bar(
-                            prob_df,
-                            x="Genre",
-                            y="Probability",
-                            title="Prediction Confidence"
-                        )
-
-                        st.plotly_chart(fig, use_container_width=True)
-
-                except Exception as e:
-                    st.error(f"Prediction failed: {e}")
 
 # -------------------------------------------------
 # MODEL PERFORMANCE
