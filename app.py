@@ -277,6 +277,9 @@ elif page == "About Project":
 ### Model
 RandomForestClassifier (200 estimators)
 
+st.write(features.shape)
+st.write(model.n_features_in_)
+
 ### Tech Stack
 Python, Streamlit, Librosa, Scikit-learn, Plotly
 
