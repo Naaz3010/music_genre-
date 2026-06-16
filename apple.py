@@ -52,8 +52,7 @@ model = load_model()
 # -------------------------------------------------
 # FEATURE EXTRACTION (ROBUST + SAFE)
 # -------------------------------------------------
-# LENGTH FEATURE
-features.append(float(len(y)))
+
 def extract_features(y, sr):
 
     def to_scalar(x):
@@ -63,6 +62,9 @@ def extract_features(y, sr):
         return float(np.var(np.asarray(x).reshape(-1)))
 
     features = []
+
+    # LENGTH FEATURE
+    features.append(float(len(y)))
 
     # Chroma
     chroma = librosa.feature.chroma_stft(y=y, sr=sr)
