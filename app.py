@@ -155,6 +155,13 @@ col4.metric("Pipeline", "Librosa + ML")
 
 st.divider()
 
+Pipeline([
+    ('features', FeatureExtractor()),
+    ('scaler', StandardScaler()),
+    ('model', RandomForestClassifier())
+])
+
+
 # -------------------------------------------------
 # SIDEBAR
 # -------------------------------------------------
@@ -183,14 +190,8 @@ if page == "Dashboard":
 # -------------------------------------------------
 # PREDICTION PAGE
 # -------------------------------------------------
-
-Pipeline([
-    ('features', FeatureExtractor()),
-    ('scaler', StandardScaler()),
-    ('model', RandomForestClassifier())
-])
-
-elif page == "Genre Prediction":
+    
+    elif page == "Genre Prediction":
 
     st.subheader("Upload Audio File")
 
