@@ -33,6 +33,9 @@ model = load_model()
 # -------------------------------------------------
 # FEATURE EXTRACTION (MATCH TRAINING)
 # -------------------------------------------------
+st.write("Model expects:", model.n_features_in_)
+st.write("You produced:", features.shape[1])
+
 
 def extract_features(y, sr):
 
