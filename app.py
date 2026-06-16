@@ -35,58 +35,60 @@ model = load_model()
 
 def extract_features(y, sr):
 
-    def f_mean(x):
-        return float(np.mean(np.ravel(x)))
+    def scalar(x):
+        return float(np.mean(np.asarray(x).reshape(-1)))
 
-    def f_var(x):
-        return float(np.var(np.ravel(x)))
+    def variance(x):
+        return float(np.var(np.asarray(x).reshape(-1)))
 
     features = []
 
-    # -------- Chroma --------
+    # ---------------- Chroma ----------------
     chroma = librosa.feature.chroma_stft(y=y, sr=sr)
-    features += [f_mean(chroma), f_var(chroma)]
+    features += [scalar(chroma), variance(chroma)]
 
-    # -------- RMS --------
+    # ---------------- RMS ----------------
     rms = librosa.feature.rms(y=y)
-    features += [f_mean(rms), f_var(rms)]
+    features += [scalar(rms), variance(rms)]
 
-    # -------- Spectral Centroid --------
+    # ---------------- Spectral Centroid ----------------
     cent = librosa.feature.spectral_centroid(y=y, sr=sr)
-    features += [f_mean(cent), f_var(cent)]
+    features += [scalar(cent), variance(cent)]
 
-    # -------- Spectral Bandwidth --------
+    # ---------------- Bandwidth ----------------
     bw = librosa.feature.spectral_bandwidth(y=y, sr=sr)
-    features += [f_mean(bw), f_var(bw)]
+    features += [scalar(bw), variance(bw)]
 
-    # -------- Rolloff --------
+    # ---------------- Rolloff ----------------
     rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr)
-    features += [f_mean(rolloff), f_var(rolloff)]
+    features += [scalar(rolloff), variance(rolloff)]
 
-    # -------- Zero Crossing Rate --------
+    # ---------------- ZCR ----------------
     zcr = librosa.feature.zero_crossing_rate(y)
-    features += [f_mean(zcr), f_var(zcr)]
+    features += [scalar(zcr), variance(zcr)]
 
-    # -------- Harmony --------
+    # ---------------- Harmonic ----------------
     harmony = librosa.effects.harmonic(y)
-    features += [f_mean(harmony), f_var(harmony)]
+    features += [scalar(harmony), variance(harmony)]
 
-    # -------- Percussive --------
+    # ---------------- Percussive ----------------
     percussive = librosa.effects.percussive(y)
-    features += [f_mean(percussive), f_var(percussive)]
+    features += [scalar(percussive), variance(percussive)]
 
-    # -------- Tempo --------
+    # ---------------- Tempo ----------------
     tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-    features.append(float(tempo))
+    features.append(float(np.asarray(tempo).reshape(-1)[0]))
 
-    # -------- MFCC (20 x mean + var) --------
+    # ---------------- MFCC ----------------
     mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20)
 
     for i in range(20):
-        features.append(f_mean(mfcc[i]))
-        features.append(f_var(mfcc[i]))
+        features.append(scalar(mfcc[i]))
+        features.append(variance(mfcc[i]))
 
-    return np.array(features, dtype=np.float32).reshape(1, -1)
+    features = np.array(features, dtype=np.float32)
+
+    return features.reshape(1, -1)
 
 # -------------------------------------------------
 # HEADER
@@ -122,6 +124,11 @@ if page == "Dashboard":
 
     fig = px.bar(df, x="Genre", y="Tracks", title="GTZAN Dataset Distribution")
     st.plotly_chart(fig, use_container_width=True)
+
+st.write("Feature shape:", features.shape)
+st.write("Any NaN:", np.isnan(features).any())
+st.write("Any Inf:", np.isinf(features).any())
+st.write("Model expects:", model.n_features_in_)
 
 # -------------------------------------------------
 # PREDICTION
