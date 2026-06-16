@@ -136,11 +136,6 @@ col4.metric("Pipeline", "Librosa + ML")
 
 st.divider()
 
-Pipeline([
-    ('features', FeatureExtractor()),
-    ('scaler', StandardScaler()),
-    ('model', RandomForestClassifier())
-])
 
 
 # -------------------------------------------------
