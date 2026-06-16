@@ -54,80 +54,35 @@ model = load_model()
 # FEATURE EXTRACTION (FIXED & STABLE)
 # -------------------------------------------------
 
-def extract_features(y, sr):
 
-    features = []
+y, sr = librosa.load(uploaded_file, sr=None)
 
-    def safe_mean(x):
-        return float(np.mean(x))
+features = extract_features(y, sr)
 
-    def safe_var(x):
-        return float(np.var(x))
+st.write("Feature shape:", features.shape)
+st.write("Model expects:", model.n_features_in_)
 
-    # -------------------------
-    # Chroma STFT
-    # -------------------------
-    chroma = librosa.feature.chroma_stft(y=y, sr=sr)
-    features.append(safe_mean(chroma))
-    features.append(safe_var(chroma))
+# ✅ REAL PREDICTION
+prediction = model.predict(features)[0]
+st.success(f"Predicted Genre: {prediction}")
 
-    # -------------------------
-    # RMS
-    # -------------------------
-    rms = librosa.feature.rms(y=y)
-    features.append(safe_mean(rms))
-    features.append(safe_var(rms))
+# ✅ PROBABILITY
+if hasattr(model, "predict_proba"):
+    probs = model.predict_proba(features)[0]
 
-    # -------------------------
-    # Spectral features
-    # -------------------------
-    cent = librosa.feature.spectral_centroid(y=y, sr=sr)
-    features.append(safe_mean(cent))
-    features.append(safe_var(cent))
+    prob_df = pd.DataFrame({
+        "Genre": model.classes_,
+        "Probability": probs
+    })
 
-    bw = librosa.feature.spectral_bandwidth(y=y, sr=sr)
-    features.append(safe_mean(bw))
-    features.append(safe_var(bw))
+    fig = px.bar(
+        prob_df,
+        x="Genre",
+        y="Probability",
+        title="Prediction Confidence"
+    )
 
-    rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr)
-    features.append(safe_mean(rolloff))
-    features.append(safe_var(rolloff))
-
-    zcr = librosa.feature.zero_crossing_rate(y)
-    features.append(safe_mean(zcr))
-    features.append(safe_var(zcr))
-
-    # -------------------------
-    # Harmonic / Percussive (FIXED)
-    # -------------------------
-    harmony = librosa.effects.harmonic(y)
-    features.append(float(np.mean(harmony)))
-    features.append(float(np.var(harmony)))
-
-    percussive = librosa.effects.percussive(y)
-    features.append(float(np.mean(percussive)))
-    features.append(float(np.var(percussive)))
-
-    # -------------------------
-    # Tempo
-    # -------------------------
-    tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-    features.append(float(tempo))
-
-    # -------------------------
-    # MFCC (CRITICAL FIX)
-    # -------------------------
-    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20)
-
-    for i in range(20):
-        features.append(float(np.mean(mfcc[i])))
-        features.append(float(np.var(mfcc[i])))
-
-    # FINAL SAFETY CHECK
-    features = np.array(features, dtype=np.float32)
-
-    return features.reshape(1, -1)
-
+    st.plotly_chart(fig, use_container_width=True)
 
 
 # -------------------------------------------------
