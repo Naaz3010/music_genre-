@@ -9,3 +9,4 @@ soundfile
 audioread
 numba
 scipy
+pipeline
