@@ -52,7 +52,8 @@ model = load_model()
 # -------------------------------------------------
 # FEATURE EXTRACTION (ROBUST + SAFE)
 # -------------------------------------------------
-
+# LENGTH FEATURE
+features.append(float(len(y)))
 def extract_features(y, sr):
 
     def to_scalar(x):
