@@ -125,6 +125,9 @@ st.write(model)
 st.write(model.classes_)
 st.write(model.n_features_in_)
 
+st.write("PRED:", prediction)
+st.write("PROB:", model.predict_proba(features))
+
 # -------------------------------------------------
 # SIDEBAR
 # -------------------------------------------------
